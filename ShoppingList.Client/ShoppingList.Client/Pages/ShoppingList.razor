@@ -1,0 +1,90 @@
+@page "/shoppinglist"
+@inject HttpClient Http
+
+<h3>Min Shoppinglista</h3>
+
+@if (ListId == Guid.Empty)
+{
+    <p>Ingen inköpslista hittades.</p>
+    <button @onclick="CreateNewList">Skapa en ny lista</button>
+}
+else
+{
+    <ul>
+        @foreach (var item in Items)
+        {
+            <li>
+                <input type="checkbox" checked="@item.IsPicked" @onchange="(e) => TogglePicked(item, e)" />
+                <span style="@GetItemStyle(item)">@item.Name</span>
+                <button @onclick="() => DeleteItem(item.Id)">❌</button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<Item> Items = new();
+    private Guid ListId = Guid.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadList();
+    }
+
+    private async Task LoadList()
+    {
+        var lists = await Http.GetFromJsonAsync<List<EntityList>>("lists");
+        if (lists != null && lists.Any())
+        {
+            ListId = lists.First().Id;
+            await LoadItems();
+        }
+    }
+
+    private async Task LoadItems()
+    {
+        Items = await Http.GetFromJsonAsync<List<Item>>($"items/{ListId}");
+    }
+
+    private async Task CreateNewList()
+    {
+        var newList = new EntityList { Name = "Ny inköpslista", Date = DateTime.UtcNow };
+        var response = await Http.PostAsJsonAsync("lists", newList);
+        if (response.IsSuccessStatusCode)
+        {
+            ListId = await response.Content.ReadFromJsonAsync<Guid>();
+            await LoadItems();
+        }
+    }
+
+    private async Task TogglePicked(Item item, ChangeEventArgs e)
+    {
+        if (bool.TryParse(e.Value?.ToString(), out bool isPicked))
+        {
+            item.IsPicked = isPicked;
+            await Http.PutAsync($"items/{item.Id}/toggle-picked", null);
+        }
+    }
+
+    private async Task DeleteItem(int id)
+    {
+        await Http.DeleteAsync($"items/{id}");
+        Items.RemoveAll(i => i.Id == id);
+    }
+
+    private string GetItemStyle(Item item) => item.IsPicked ? "text-decoration: line-through;" : "";
+
+    public class Item
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public bool IsPicked { get; set; }
+    }
+
+    public class EntityList
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+    }
+}

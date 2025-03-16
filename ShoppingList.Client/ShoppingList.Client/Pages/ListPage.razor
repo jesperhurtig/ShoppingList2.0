@@ -1,0 +1,83 @@
+@page "/list/{ListId:guid}"
+@inject HttpClient Http
+
+<h3>@List?.Name</h3>
+
+@if (List == null)
+{
+    <p>Laddar listan...</p>
+}
+else
+{
+    <ul>
+        @foreach (var item in List.Items)
+        {
+            <li>
+                <input type="checkbox" checked="@item.IsPicked" @onchange="() => TogglePicked(item)" />
+                <span style="@GetItemStyle(item)">@item.Name</span>
+                <button @onclick="() => DeleteItem(item.Id)">❌</button>
+            </li>
+        }
+    </ul>
+    <input @bind="NewItemName" placeholder="Lägg till ett nytt item" />
+    <button @onclick="AddItem">Lägg till</button>
+}
+
+@code {
+    [Parameter] public Guid ListId { get; set; }
+    private EntityList? List;
+    private string NewItemName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadList();
+    }
+
+    private async Task LoadList()
+    {
+        List = await Http.GetFromJsonAsync<EntityList>($"lists/{ListId}");
+    }
+
+    private async Task AddItem()
+    {
+        if (string.IsNullOrWhiteSpace(NewItemName)) return;
+
+        var newItem = new Item { Name = NewItemName, ShoppingListId = ListId };
+        var response = await Http.PostAsJsonAsync($"items/{ListId}", newItem);
+
+        if (response.IsSuccessStatusCode)
+        {
+            NewItemName = "";
+            await LoadList();
+        }
+    }
+
+    private async Task TogglePicked(Item item)
+    {
+        item.IsPicked = !item.IsPicked;
+        await Http.PutAsync($"items/{item.Id}/toggle-picked", null);
+    }
+
+    private async Task DeleteItem(int id)
+    {
+        await Http.DeleteAsync($"items/{id}");
+        List?.Items.RemoveAll(i => i.Id == id);
+    }
+
+    private string GetItemStyle(Item item) => item.IsPicked ? "text-decoration: line-through;" : "";
+
+    public class EntityList
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public List<Item> Items { get; set; } = new();
+    }
+
+    public class Item
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public bool IsPicked { get; set; }
+        public Guid ShoppingListId { get; set; }
+    }
+}

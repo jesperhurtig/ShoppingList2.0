@@ -1,0 +1,38 @@
+@page "/new-list"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<h3>Skapa en ny inköpslista</h3>
+
+<input @bind="ListName" placeholder="Ange namn på listan" />
+<button @onclick="CreateList">Skapa lista</button>
+
+@code {
+    private string ListName = string.Empty;
+    private bool IsCreating = false;
+
+    private async Task CreateList()
+    {
+        if (string.IsNullOrWhiteSpace(ListName)) return;
+
+        var response = await Http.PostAsJsonAsync("api/lists", new { Name = ListName });
+
+        if (response.IsSuccessStatusCode)
+        {
+            var createdList = await response.Content.ReadFromJsonAsync<EntityList>();
+            Navigation.NavigateTo($"/list/{createdList.Id}");
+        }
+        else
+        {
+            Console.WriteLine($"Fel vid skapande av lista: {response.StatusCode}");
+        }
+    }
+
+
+    public class EntityList
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+    }
+}

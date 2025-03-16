@@ -1,0 +1,9 @@
+﻿@using ShoppingList.Client.Layout
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+    </Found>
+    <NotFound>
+        <RedirectTo Route="/new-list" />
+    </NotFound>
+</Router>
