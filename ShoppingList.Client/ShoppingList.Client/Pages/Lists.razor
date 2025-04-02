@@ -1,7 +1,7 @@
-@page "/list/{ListId:guid}"
+@page "/listpage/{listId:guid}"
 @inject HttpClient Http
 
-<h3>@List?.Name</h3>
+<h1>@List?.Name</h1>
 
 @if (List == null)
 {
@@ -19,14 +19,14 @@ else
             </li>
         }
     </ul>
-    <input @bind="NewItemName" placeholder="Lägg till ett nytt item" />
+    <input @bind="newItemName" placeholder="Lägg till ett nytt item" />
     <button @onclick="AddItem">Lägg till</button>
 }
 
 @code {
-    [Parameter] public Guid ListId { get; set; }
+    [Parameter] public Guid listId { get; set; }
     private EntityList? List;
-    private string NewItemName = string.Empty;
+    private string newItemName = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -35,19 +35,19 @@ else
 
     private async Task LoadList()
     {
-        List = await Http.GetFromJsonAsync<EntityList>($"lists/{ListId}");
+        List = await Http.GetFromJsonAsync<EntityList>($"lists/{listId}");
     }
 
     private async Task AddItem()
     {
-        if (string.IsNullOrWhiteSpace(NewItemName)) return;
+        if (string.IsNullOrWhiteSpace(newItemName)) return;
 
-        var newItem = new Item { Name = NewItemName, ShoppingListId = ListId };
-        var response = await Http.PostAsJsonAsync($"items/{ListId}", newItem);
+        var newItem = new Item { Name = newItemName, ShoppingListId = listId };
+        var response = await Http.PostAsJsonAsync($"/api/items/{listId}", newItem);
 
         if (response.IsSuccessStatusCode)
         {
-            NewItemName = "";
+            newItemName = "";
             await LoadList();
         }
     }
